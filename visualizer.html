@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAEMON ZMSFA - Fractal Visualizer</title>
+    <style>
+        body { margin: 0; background: #050505; color: #8A2BE2; font-family: monospace; overflow: hidden; }
+        canvas { display: block; }
+        #overlay { position: absolute; top: 10px; left: 10px; pointer-events: none; text-shadow: 0 0 5px #000; }
+        .layer-label { font-size: 12px; opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <div id="overlay">
+        <h2>DAEMON AGI V8.0 - MANIFOLD TELEMETRY</h2>
+        <div id="stats">Connecting to neural manifold...</div>
+    </div>
+    <canvas id="manifold"></canvas>
+
+    <script>
+        const canvas = document.getElementById('manifold');
+        const ctx = canvas.getContext('2d');
+        const stats = document.getElementById('stats');
+
+        let manifoldData = { nodes: [], synapses: [], tick: 0 };
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        async function fetchData() {
+            try {
+                const response = await fetch('http://127.0.0.1:4242/state');
+                if (response.ok) {
+                    manifoldData = await response.json();
+                    stats.innerHTML = `Tick: ${manifoldData.tick} | Nodes: ${manifoldData.nodes.length} | Synapses: ${manifoldData.synapses.length}`;
+                }
+            } catch (e) {
+                stats.innerHTML = "OFFLINE: Ensure Daemon is running on :4242";
+            }
+        }
+
+        setInterval(fetchData, 500);
+
+        const colors = {
+            SENSORY: '#00FFFF',
+            COGNITIVE: '#8A2BE2',
+            ABSTRACT: '#FF00FF',
+            RESONANT: '#FFFF00'
+        };
+
+        function draw() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = Math.min(canvas.width, canvas.height) * 0.4;
+
+            // Draw Synapses
+            ctx.lineWidth = 0.5;
+            manifoldData.synapses.forEach(s => {
+                const source = manifoldData.nodes.find(n => n.id === s.source);
+                const target = manifoldData.nodes.find(n => n.id === s.target);
+                if (source && target) {
+                    const x1 = centerX + source.x * scale;
+                    const y1 = centerY + source.y * scale;
+                    const x2 = centerX + target.x * scale;
+                    const y2 = centerY + target.y * scale;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.strokeStyle = s.type === 'BRIDGE' ? 'rgba(255,255,255,0.1)' : `${colors[source.layer]}22`;
+                    ctx.stroke();
+                }
+            });
+
+            // Draw Nodes
+            manifoldData.nodes.forEach(n => {
+                const x = centerX + n.x * scale;
+                const y = centerY + n.y * scale;
+                const size = 2 + (n.energy / 255) * 5;
+
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fillStyle = colors[n.layer] || '#FFF';
+                ctx.shadowBlur = size;
+                ctx.shadowColor = colors[n.layer];
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if (n.energy > 150) {
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = '10px monospace';
+                    ctx.fillText(n.label, x + 5, y + 5);
+                }
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
