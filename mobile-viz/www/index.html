@@ -30,12 +30,17 @@
         const ipInput = document.getElementById('ipInput');
         let daemonUrl = '';
         let fetchInterval;
+        let dpr = window.devicePixelRatio || 1;
 
         let manifoldData = { nodes: [], synapses: [], tick: 0 };
 
         function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            ctx.scale(dpr, dpr);
         }
         window.addEventListener('resize', resize);
         resize();
@@ -68,12 +73,13 @@
         const colors = { SENSORY: '#00FFFF', COGNITIVE: '#8A2BE2', ABSTRACT: '#FF00FF', RESONANT: '#FFFF00' };
 
         function draw() {
-            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const scale = Math.min(canvas.width, canvas.height) * 0.4;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const scale = Math.min(window.innerWidth, window.innerHeight) * 0.4;
 
             ctx.lineWidth = 0.5;
             manifoldData.synapses.forEach(s => {
@@ -83,7 +89,7 @@
                     ctx.beginPath();
                     ctx.moveTo(centerX + source.x * scale, centerY + source.y * scale);
                     ctx.lineTo(centerX + target.x * scale, centerY + target.y * scale);
-                    ctx.strokeStyle = s.type === 'BRIDGE' ? 'rgba(255,255,255,0.1)' : `${colors[source.layer] || '#FFF'}22`;
+                    ctx.strokeStyle = s.type === 'BRIDGE' ? 'rgba(255,255,255,0.05)' : `${colors[source.layer] || '#FFF'}11`;
                     ctx.stroke();
                 }
             });
@@ -91,15 +97,19 @@
             manifoldData.nodes.forEach(n => {
                 const x = centerX + n.x * scale;
                 const y = centerY + n.y * scale;
-                const size = 2 + (n.energy / 255) * 5;
+                const size = 2 + (n.energy / 255) * 4;
 
                 ctx.beginPath();
                 ctx.arc(x, y, size, 0, Math.PI * 2);
                 ctx.fillStyle = colors[n.layer] || '#FFF';
-                ctx.shadowBlur = size;
-                ctx.shadowColor = colors[n.layer] || '#FFF';
                 ctx.fill();
-                ctx.shadowBlur = 0;
+                
+                if (n.energy > 200) {
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = colors[n.layer];
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
             });
 
             requestAnimationFrame(draw);
