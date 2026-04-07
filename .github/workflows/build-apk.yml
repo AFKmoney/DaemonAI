@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build and Release Android APK
 on:
   push:
     branches: [ "main" ]
@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
 
@@ -29,10 +31,7 @@ jobs:
 
       - name: Prepare Web Directory
         working-directory: ./mobile-viz
-        run: |
-          mkdir -p www
-          # Ensure index.html is in the right place for Capacitor sync
-          cp www/index.html www/index.html || echo "File already there"
+        run: mkdir -p www
 
       - name: Add and Sync Android Platform
         working-directory: ./mobile-viz
@@ -46,8 +45,15 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v3
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          name: DaemonViz-AGI-v8
-          path: mobile-viz/android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: v8.0.${{ github.run_number }}
+          name: Daemon AGI v8.0 Build ${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: mobile-viz/android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
