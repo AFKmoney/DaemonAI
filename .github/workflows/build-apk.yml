@@ -21,29 +21,33 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         working-directory: ./mobile-viz
-        run: npm install
+        run: |
+          npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest
+          npm install
 
-      - name: Initialize Capacitor Android
+      - name: Prepare Web Directory
         working-directory: ./mobile-viz
         run: |
           mkdir -p www
-          npx cap add android || echo "Android platform already added"
+          # Ensure index.html is in the right place for Capacitor sync
+          cp www/index.html www/index.html || echo "File already there"
+
+      - name: Add and Sync Android Platform
+        working-directory: ./mobile-viz
+        run: |
+          npx cap add android
           npx cap sync android
 
-      - name: Fix Gradle permissions
+      - name: Build APK with Gradle
         working-directory: ./mobile-viz/android
-        run: chmod +x gradlew
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-      - name: Build with Gradle
-        uses: gradle/gradle-build-action@v2
-        with:
-          build-root-directory: ./mobile-viz/android
-          arguments: assembleDebug
-
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: DaemonViz-v8-Alpha
+          name: DaemonViz-AGI-v8
           path: mobile-viz/android/app/build/outputs/apk/debug/app-debug.apk
