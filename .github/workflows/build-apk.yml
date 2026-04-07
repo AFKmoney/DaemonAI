@@ -21,25 +21,29 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+      - name: Install dependencies
+        working-directory: ./mobile-viz
+        run: npm install
 
-      - name: Install dependencies and init android
+      - name: Initialize Capacitor Android
         working-directory: ./mobile-viz
         run: |
-          npm install
-          npx cap add android
+          mkdir -p www
+          npx cap add android || echo "Android platform already added"
+          npx cap sync android
 
-      - name: Sync Capacitor
-        working-directory: ./mobile-viz
-        run: npx cap sync android
-
-      - name: Build APK
+      - name: Fix Gradle permissions
         working-directory: ./mobile-viz/android
-        run: ./gradlew assembleDebug
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          build-root-directory: ./mobile-viz/android
+          arguments: assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
-          name: daemon-visualizer-apk
+          name: DaemonViz-v8-Alpha
           path: mobile-viz/android/app/build/outputs/apk/debug/app-debug.apk
