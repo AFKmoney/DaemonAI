@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DAEMON ZMSFA - Mobile</title>
+    <style>
+        body { margin: 0; background: #050505; color: #8A2BE2; font-family: monospace; overflow: hidden; touch-action: none; }
+        canvas { display: block; position: absolute; top:0; left:0; z-index: 1; }
+        #overlay { position: absolute; top: 10px; left: 10px; pointer-events: auto; text-shadow: 0 0 5px #000; z-index: 10;}
+        input, button { background: #111; color: #0FF; border: 1px solid #8A2BE2; padding: 10px; margin-top: 5px; font-family: monospace; font-size: 16px; border-radius: 4px; }
+        button:active { background: #8A2BE2; color: #000; }
+        #stats { font-size: 14px; margin-top: 10px; }
+        h2 { margin: 0 0 10px 0; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div id="overlay">
+        <h2>DAEMON AGI V8.0</h2>
+        <input type="text" id="ipInput" value="192.168.1.100:4242" placeholder="Daemon IP" />
+        <button onclick="startConnection()">CONNECT</button>
+        <div id="stats">Awaiting connection...</div>
+    </div>
+    <canvas id="manifold"></canvas>
+
+    <script>
+        const canvas = document.getElementById('manifold');
+        const ctx = canvas.getContext('2d');
+        const stats = document.getElementById('stats');
+        const ipInput = document.getElementById('ipInput');
+        let daemonUrl = '';
+        let fetchInterval;
+
+        let manifoldData = { nodes: [], synapses: [], tick: 0 };
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function startConnection() {
+            let ip = ipInput.value.trim();
+            if (!ip.startsWith('http')) ip = 'http://' + ip;
+            if (!ip.endsWith('/state')) ip = ip.replace(/\/$/, '') + '/state';
+            daemonUrl = ip;
+            if (fetchInterval) clearInterval(fetchInterval);
+            fetchInterval = setInterval(fetchData, 500);
+            fetchData();
+        }
+
+        async function fetchData() {
+            if (!daemonUrl) return;
+            try {
+                const response = await fetch(daemonUrl);
+                if (response.ok) {
+                    manifoldData = await response.json();
+                    stats.innerHTML = `Tick: ${manifoldData.tick}<br/>Nodes: ${manifoldData.nodes.length}<br/>Synapses: ${manifoldData.synapses.length}`;
+                    stats.style.color = "#0F0";
+                }
+            } catch (e) {
+                stats.innerHTML = "OFFLINE: Check IP or Daemon Status";
+                stats.style.color = "#F00";
+            }
+        }
+
+        const colors = { SENSORY: '#00FFFF', COGNITIVE: '#8A2BE2', ABSTRACT: '#FF00FF', RESONANT: '#FFFF00' };
+
+        function draw() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = Math.min(canvas.width, canvas.height) * 0.4;
+
+            ctx.lineWidth = 0.5;
+            manifoldData.synapses.forEach(s => {
+                const source = manifoldData.nodes.find(n => n.id === s.source);
+                const target = manifoldData.nodes.find(n => n.id === s.target);
+                if (source && target) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + source.x * scale, centerY + source.y * scale);
+                    ctx.lineTo(centerX + target.x * scale, centerY + target.y * scale);
+                    ctx.strokeStyle = s.type === 'BRIDGE' ? 'rgba(255,255,255,0.1)' : `${colors[source.layer] || '#FFF'}22`;
+                    ctx.stroke();
+                }
+            });
+
+            manifoldData.nodes.forEach(n => {
+                const x = centerX + n.x * scale;
+                const y = centerY + n.y * scale;
+                const size = 2 + (n.energy / 255) * 5;
+
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fillStyle = colors[n.layer] || '#FFF';
+                ctx.shadowBlur = size;
+                ctx.shadowColor = colors[n.layer] || '#FFF';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>

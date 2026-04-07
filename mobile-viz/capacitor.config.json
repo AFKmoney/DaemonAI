@@ -1,0 +1,9 @@
+{
+  "appId": "com.afkmoney.daemonviz",
+  "appName": "DaemonViz",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true
+  }
+}
